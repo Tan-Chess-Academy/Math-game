@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CALCULUS — Advanced Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a25;
+    --border: #2a2a40;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #a855f7;
+    --text: #e8e8f0;
+    --text-dim: #6b6b8a;
+    --display-bg: #060610;
+    --btn-bg: #16161f;
+    --btn-hover: #1e1e2e;
+    --btn-active: #00e5ff22;
+    --green: #00ff94;
+    --red: #ff4444;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background-image: 
+      radial-gradient(ellipse at 20% 20%, #00e5ff08 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, #a855f708 0%, transparent 50%);
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3.5rem;
+    letter-spacing: 0.2em;
+    background: linear-gradient(90deg, var(--accent), var(--accent3), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .header p {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    margin-top: 4px;
+  }
+
+  .calculator {
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 
+      0 0 60px #00e5ff10,
+      0 40px 80px #00000080,
+      inset 0 1px 0 #ffffff08;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: #00e5ff08;
+  }
+
+  .tab:hover:not(.active) { color: var(--text); background: #ffffff05; }
+
+  /* DISPLAY */
+  .display {
+    background: var(--display-bg);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    min-height: 90px;
+    position: relative;
+  }
+
+  .display-expr {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    min-height: 18px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+  }
+
+  .display-main {
+    font-size: 2.2rem;
+    text-align: right;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 4px;
+    transition: color 0.2s;
+    letter-spacing: -0.02em;
+  }
+
+  .display-main.error { color: var(--red); font-size: 1.1rem; padding-top: 12px; }
+  .display-main.result { color: var(--green); }
+
+  .mode-tag {
+    position: absolute;
+    top: 10px;
+    left: 14px;
+    font-size: 0.6rem;
+    color: var(--accent);
+    letter-spacing: 0.2em;
+    background: #00e5ff18;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #00e5ff30;
+  }
+
+  /* PANELS */
+  .panel { display: none; padding: 16px; }
+  .panel.active { display: block; }
+
+  /* STANDARD CALCULATOR BUTTONS */
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 14px 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    background: var(--btn-bg);
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.12s;
+    letter-spacing: 0.03em;
+    user-select: none;
+  }
+
+  .btn:hover { background: var(--btn-hover); border-color: #3a3a55; transform: translateY(-1px); }
+  .btn:active { background: var(--btn-active); transform: translateY(0); border-color: var(--accent); }
+
+  .btn.op { color: var(--accent); border-color: #00e5ff28; }
+  .btn.op:hover { background: #00e5ff12; }
+  .btn.fn { color: var(--accent3); font-size: 0.72rem; }
+  .btn.eq { background: var(--accent); color: #000; border-color: var(--accent); font-size: 1rem; }
+  .btn.eq:hover { background: #33eaff; box-shadow: 0 0 20px #00e5ff50; }
+  .btn.clear { color: var(--red); border-color: #ff444430; }
+  .btn.clear:hover { background: #ff444415; }
+  .btn.orange { color: var(--accent2); border-color: #ff6b3528; }
+  .btn.span2 { grid-column: span 2; }
+
+  /* SIGMA PANEL */
+  .adv-panel { }
+
+  .adv-section {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+
+  .adv-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .adv-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .symbol {
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--accent3);
+    font-family: serif;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .field-row.single { grid-template-columns: 1fr; }
+
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+
+  label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  input[type="text"], input[type="number"] {
+    background: var(--display-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #00e5ff18; }
+
+  .hint {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .hint span { color: var(--accent3); }
+
+  .compute-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--accent3), #7c3aed);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+
+  .compute-btn:hover { filter: brightness(1.15); box-shadow: 0 0 20px #a855f740; transform: translateY(-1px); }
+  .compute-btn:active { transform: translateY(0); }
+  .compute-btn.int-btn { background: linear-gradient(135deg, var(--accent2), #e03d00); }
+  .compute-btn.int-btn:hover { box-shadow: 0 0 20px #ff6b3540; }
+
+  .result-box {
+    background: var(--display-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    min-height: 48px;
+    font-size: 1.05rem;
+    text-align: right;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    word-break: break-all;
+  }
+
+  .result-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-right: auto;
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+  }
+
+  .result-box.error-box { color: var(--red); font-size: 0.75rem; }
+
+  /* Steps */
+  .steps-box {
+    background: var(--display-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 8px;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    line-height: 1.8;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .steps-box::-webkit-scrollbar { width: 4px; }
+  .steps-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* History */
+  .history-panel { }
+
+  .history-list {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  .history-list::-webkit-scrollbar { width: 4px; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .history-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .history-item:hover { border-color: var(--accent); background: #00e5ff08; }
+
+  .hist-expr { font-size: 0.7rem; color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-result { font-size: 0.85rem; color: var(--green); flex-shrink: 0; }
+
+  .empty-history { text-align: center; color: var(--text-dim); font-size: 0.7rem; padding: 30px; letter-spacing: 0.1em; }
+
+  .clear-hist-btn {
+    width: 100%;
+    padding: 8px;
+    background: none;
+    border: 1px solid #ff444430;
+    border-radius: 6px;
+    color: var(--red);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: all 0.2s;
+  }
+
+  .clear-hist-btn:hover { background: #ff444415; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CALCULUS</h1>
+  <p>ADVANCED SCIENTIFIC CALCULATOR</p>
+</div>
+
+<div class="calculator">
+  <div class="display" id="display">
+    <div class="mode-tag" id="modeTag">STANDARD</div>
+    <div class="display-expr" id="dispExpr"></div>
+    <div class="display-main" id="dispMain">0</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('std')">BASIC</button>
+    <button class="tab" onclick="switchTab('sci')">SCIENTIFIC</button>
+    <button class="tab" onclick="switchTab('sigma')">Σ SIGMA</button>
+    <button class="tab" onclick="switchTab('integral')">∫ INTEGRAL</button>
+    <button class="tab" onclick="switchTab('hist')">HISTORY</button>
+  </div>
+
+  <!-- BASIC -->
+  <div class="panel active" id="panel-std">
+    <div class="btn-grid">
+      <button class="btn clear" onclick="clearAll()">AC</button>
+      <button class="btn orange" onclick="toggleSign()">+/−</button>
+      <button class="btn orange" onclick="appendOp('%')">%</button>
+      <button class="btn op" onclick="appendOp('/')">÷</button>
+
+      <button class="btn" onclick="appendNum('7')">7</button>
+      <button class="btn" onclick="appendNum('8')">8</button>
+      <button class="btn" onclick="appendNum('9')">9</button>
+      <button class="btn op" onclick="appendOp('*')">×</button>
+
+      <button class="btn" onclick="appendNum('4')">4</button>
+      <button class="btn" onclick="appendNum('5')">5</button>
+      <button class="btn" onclick="appendNum('6')">6</button>
+      <button class="btn op" onclick="appendOp('-')">−</button>
+
+      <button class="btn" onclick="appendNum('1')">1</button>
+      <button class="btn" onclick="appendNum('2')">2</button>
+      <button class="btn" onclick="appendNum('3')">3</button>
+      <button class="btn op" onclick="appendOp('+')">+</button>
+
+      <button class="btn span2" onclick="appendNum('0')">0</button>
+      <button class="btn" onclick="appendNum('.')">.</button>
+      <button class="btn eq" onclick="calculate()">=</button>
+    </div>
+  </div>
+
+  <!-- SCIENTIFIC -->
+  <div class="panel" id="panel-sci">
+    <div class="btn-grid">
+      <button class="btn fn" onclick="appendFn('sin(')">sin</button>
+      <button class="btn fn" onclick="appendFn('cos(')">cos</button>
+      <button class="btn fn" onclick="appendFn('tan(')">tan</button>
+      <button class="btn fn" onclick="appendFn('log(')">log</button>
+
+      <button class="btn fn" onclick="appendFn('asin(')">sin⁻¹</button>
+      <button class="btn fn" onclick="appendFn('acos(')">cos⁻¹</button>
+      <button class="btn fn" onclick="appendFn('atan(')">tan⁻¹</button>
+      <button class="btn fn" onclick="appendFn('ln(')">ln</button>
+
+      <button class="btn fn" onclick="appendFn('sqrt(')">√</button>
+      <button class="btn fn" onclick="appendFn('cbrt(')">∛</button>
+      <button class="btn op" onclick="appendOp('^')">xʸ</button>
+      <button class="btn fn" onclick="appendFn('abs(')">|x|</button>
+
+      <button class="btn orange" onclick="appendConst('Math.PI')">π</button>
+      <button class="btn orange" onclick="appendConst('Math.E')">e</button>
+      <button class="btn fn" onclick="appendFn('fact(')">n!</button>
+      <button class="btn op" onclick="appendStr('(')">(</button>
+
+      <button class="btn clear" onclick="clearAll()">AC</button>
+      <button class="btn orange" onclick="backspace()">⌫</button>
+      <button class="btn op" onclick="appendStr(')')">)</button>
+      <button class="btn eq" onclick="calculate()">=</button>
+    </div>
+    <div style="margin-top:10px">
+      <div class="btn-grid">
+        <button class="btn" onclick="appendNum('7')">7</button>
+        <button class="btn" onclick="appendNum('8')">8</button>
+        <button class="btn" onclick="appendNum('9')">9</button>
+        <button class="btn op" onclick="appendOp('/')" >÷</button>
+        <button class="btn" onclick="appendNum('4')">4</button>
+        <button class="btn" onclick="appendNum('5')">5</button>
+        <button class="btn" onclick="appendNum('6')">6</button>
+        <button class="btn op" onclick="appendOp('*')">×</button>
+        <button class="btn" onclick="appendNum('1')">1</button>
+        <button class="btn" onclick="appendNum('2')">2</button>
+        <button class="btn" onclick="appendNum('3')">3</button>
+        <button class="btn op" onclick="appendOp('-')">−</button>
+        <button class="btn span2" onclick="appendNum('0')">0</button>
+        <button class="btn" onclick="appendNum('.')">.</button>
+        <button class="btn op" onclick="appendOp('+')">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGMA -->
+  <div class="panel" id="panel-sigma">
+    <div class="adv-section">
+      <div class="adv-title"><span class="symbol">Σ</span> Summation (Sigma)</div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Lower Bound (n=)</label>
+          <input type="number" id="sigmaFrom" value="1" placeholder="1">
+        </div>
+        <div class="field-group">
+          <label>Upper Bound</label>
+          <input type="number" id="sigmaTo" value="10" placeholder="10">
+        </div>
+      </div>
+      <div class="field-row single">
+        <div class="field-group">
+          <label>Expression f(n)</label>
+          <input type="text" id="sigmaExpr" value="n^2" placeholder="e.g. n^2, n*(n+1), sin(n)">
+          <div class="hint">Use <span>n</span> as the variable. Supports: <span>n^2, sqrt(n), sin(n), n!, log(n)</span></div>
+        </div>
+      </div>
+      <button class="compute-btn" onclick="computeSigma()">COMPUTE Σ</button>
+      <div class="result-box" id="sigmaResult">
+        <span class="result-label">RESULT</span>
+        <span id="sigmaVal">—</span>
+      </div>
+      <div class="steps-box" id="sigmaSteps" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- INTEGRAL -->
+  <div class="panel" id="panel-integral">
+    <div class="adv-section">
+      <div class="adv-title"><span class="symbol">∫</span> Definite Integration</div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Lower Limit (a)</label>
+          <input type="number" id="intFrom" value="0" step="any" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label>Upper Limit (b)</label>
+          <input type="number" id="intTo" value="1" step="any" placeholder="1">
+        </div>
+      </div>
+      <div class="field-row single">
+        <div class="field-group">
+          <label>Expression f(x)</label>
+          <input type="text" id="intExpr" value="x^2" placeholder="e.g. x^2, sin(x), e^x">
+          <div class="hint">Use <span>x</span> as the variable. Supports: <span>x^2, sin(x), cos(x), e^x, sqrt(x), ln(x)</span></div>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Method</label>
+          <select id="intMethod" style="background:var(--display-bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Space Mono',monospace;font-size:0.78rem;padding:8px 10px;outline:none;width:100%">
+            <option value="simpson">Simpson's 1/3</option>
+            <option value="gauss">Gaussian Quadrature</option>
+            <option value="trap">Trapezoidal</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Steps (n)</label>
+          <input type="number" id="intN" value="1000" min="4" max="100000">
+        </div>
+      </div>
+      <button class="compute-btn int-btn" onclick="computeIntegral()">COMPUTE ∫</button>
+      <div class="result-box" id="intResult">
+        <span class="result-label">RESULT</span>
+        <span id="intVal">—</span>
+      </div>
+      <div class="steps-box" id="intSteps" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel" id="panel-hist">
+    <div class="history-list" id="historyList">
+      <div class="empty-history">NO CALCULATIONS YET</div>
+    </div>
+    <button class="clear-hist-btn" onclick="clearHistory()">CLEAR HISTORY</button>
+  </div>
+</div>
+
+<script>
+// ========================
+//  STATE
+// ========================
+let expr = '';
+let prevExpr = '';
+let hasResult = false;
+let history = [];
+
+// ========================
+//  DISPLAY
+// ========================
+function updateDisplay(main, sub = '', cls = '') {
+  const dm = document.getElementById('dispMain');
+  const de = document.getElementById('dispExpr');
+  dm.className = 'display-main' + (cls ? ' ' + cls : '');
+  dm.textContent = main || '0';
+  de.textContent = sub;
+}
+
+function refreshDisplay() {
+  updateDisplay(expr || '0', prevExpr);
+}
+
+// ========================
+//  TABS
+// ========================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['std', 'sci', 'sigma', 'integral', 'hist'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const tags = { std: 'STANDARD', sci: 'SCIENTIFIC', sigma: 'SIGMA Σ', integral: 'INTEGRAL ∫', hist: 'HISTORY' };
+  document.getElementById('modeTag').textContent = tags[name] || 'STANDARD';
+}
+
+// ========================
+//  STANDARD CALCULATOR
+// ========================
+function appendNum(n) {
+  if (hasResult) { expr = ''; hasResult = false; }
+  if (n === '.' && expr.split(/[\+\-\*\/]/).pop().includes('.')) return;
+  expr += n;
+  refreshDisplay();
+}
+
+function appendOp(op) {
+  hasResult = false;
+  if (expr === '' && op !== '-') return;
+  const lastChar = expr.slice(-1);
+  if (['+','-','*','/','^','%'].includes(lastChar)) expr = expr.slice(0, -1);
+  expr += op;
+  refreshDisplay();
+}
+
+function appendFn(fn) {
+  if (hasResult) { hasResult = false; }
+  expr += fn;
+  refreshDisplay();
+}
+
+function appendStr(s) {
+  if (hasResult) hasResult = false;
+  expr += s;
+  refreshDisplay();
+}
+
+function appendConst(c) {
+  if (hasResult) { hasResult = false; }
+  const vals = { 'Math.PI': 'π', 'Math.E': 'e' };
+  expr += c;
+  refreshDisplay();
+}
+
+function clearAll() {
+  expr = '';
+  prevExpr = '';
+  hasResult = false;
+  updateDisplay('0');
+}
+
+function backspace() {
+  if (hasResult) { clearAll(); return; }
+  expr = expr.slice(0, -1);
+  refreshDisplay();
+}
+
+function toggleSign() {
+  if (!expr) return;
+  if (expr.startsWith('-')) expr = expr.slice(1);
+  else expr = '-' + expr;
+  refreshDisplay();
+}
+
+function calculate() {
+  if (!expr) return;
+  try {
+    const result = safeEval(expr);
+    prevExpr = formatExpr(expr) + ' =';
+    addHistory(formatExpr(expr), formatNum(result));
+    expr = String(result);
+    hasResult = true;
+    updateDisplay(formatNum(result), prevExpr, 'result');
+  } catch (e) {
+    updateDisplay('Error', formatExpr(expr), 'error');
+    hasResult = true;
+    expr = '';
+  }
+}
+
+// ========================
+//  MATH ENGINE
+// ========================
+function safeEval(e) {
+  let s = e
+    .replace(/π/g, 'Math.PI')
+    .replace(/\be\b/g, 'Math.E')
+    .replace(/\^/g, '**')
+    .replace(/÷/g, '/')
+    .replace(/×/g, '*')
+    .replace(/−/g, '-')
+    .replace(/\bsin\(/g, 'Math.sin(')
+    .replace(/\bcos\(/g, 'Math.cos(')
+    .replace(/\btan\(/g, 'Math.tan(')
+    .replace(/\basin\(/g, 'Math.asin(')
+    .replace(/\bacos\(/g, 'Math.acos(')
+    .replace(/\batan\(/g, 'Math.atan(')
+    .replace(/\bsqrt\(/g, 'Math.sqrt(')
+    .replace(/\bcbrt\(/g, 'Math.cbrt(')
+    .replace(/\babs\(/g, 'Math.abs(')
+    .replace(/\blog\(/g, 'Math.log10(')
+    .replace(/\bln\(/g, 'Math.log(')
+    .replace(/\bfact\(([^)]+)\)/g, (_, n) => `factorial(${n})`)
+    .replace(/%/g, '/100');
+
+  // Forbidden patterns
+  if (/[a-zA-Z_$](?!Math|sin|cos|tan|sqrt|cbrt|abs|log|PI|E|asin|acos|atan|fact|ceil|floor|round|pow|exp|orial)/.test(
+    s.replace(/Math\.(sin|cos|tan|asin|acos|atan|sqrt|cbrt|abs|log10|log|PI|E|ceil|floor|round|pow|exp)/g, '')
+       .replace(/factorial/g, '')
+  )) throw new Error('Invalid');
+
+  return Function('"use strict"; function factorial(n){if(n<0)throw new Error("neg");if(n>170)return Infinity;return n<=1?1:n*factorial(n-1);} return ' + s)();
+}
+
+function evalExprForVar(exprStr, varName, varVal) {
+  let s = exprStr
+    .replace(new RegExp(`\\b${varName}\\b`, 'g'), `(${varVal})`)
+    .replace(/\^/g, '**')
+    .replace(/\bsin\(/g, 'Math.sin(')
+    .replace(/\bcos\(/g, 'Math.cos(')
+    .replace(/\btan\(/g, 'Math.tan(')
+    .replace(/\basin\(/g, 'Math.asin(')
+    .replace(/\bacos\(/g, 'Math.acos(')
+    .replace(/\batan\(/g, 'Math.atan(')
+    .replace(/\bsqrt\(/g, 'Math.sqrt(')
+    .replace(/\bcbrt\(/g, 'Math.cbrt(')
+    .replace(/\babs\(/g, 'Math.abs(')
+    .replace(/\blog\(/g, 'Math.log10(')
+    .replace(/\bln\(/g, 'Math.log(')
+    .replace(/\be\b/g, 'Math.E')
+    .replace(/π/g, 'Math.PI')
+    .replace(/\bfact\(([^)]+)\)/g, (_, n) => `factorial(${n})`)
+    .replace(/\be\^/g, 'Math.exp(') 
+    // handle e^x as exp(x): e^(...) already covered by ** above
+    ;
+  return Function('"use strict"; function factorial(n){if(n<0)throw new Error("neg");if(n>170)return Infinity;return n<=1?1:n*factorial(n-1);} return ' + s)();
+}
+
+function formatNum(n) {
+  if (typeof n !== 'number') return String(n);
+  if (!isFinite(n)) return n > 0 ? '∞' : '-∞';
+  if (Math.abs(n) > 1e12 || (Math.abs(n) < 1e-7 && n !== 0)) return n.toExponential(6);
+  const s = parseFloat(n.toPrecision(12));
+  return String(s);
+}
+
+function formatExpr(e) {
+  return e.replace(/Math\.PI/g,'π').replace(/Math\.E/g,'e').replace(/\*\*/g,'^').replace(/\*/g,'×').replace(/\//g,'÷');
+}
+
+// ========================
+//  SIGMA
+// ========================
+function computeSigma() {
+  const from = parseInt(document.getElementById('sigmaFrom').value);
+  const to = parseInt(document.getElementById('sigmaTo').value);
+  const exprStr = document.getElementById('sigmaExpr').value.trim();
+  const resEl = document.getElementById('sigmaVal');
+  const stepsEl = document.getElementById('sigmaSteps');
+  const resBox = document.getElementById('sigmaResult');
+
+  if (isNaN(from) || isNaN(to)) { showAdvError(resEl, resBox, stepsEl, 'Invalid bounds'); return; }
+  if (to - from > 100000) { showAdvError(resEl, resBox, stepsEl, 'Range too large (max 100,000)'); return; }
+
+  try {
+    let sum = 0;
+    let steps = [];
+    const showSteps = (to - from) <= 20;
+
+    for (let n = from; n <= to; n++) {
+      const val = evalExprForVar(exprStr, 'n', n);
+      if (!isFinite(val)) throw new Error('Non-finite at n=' + n);
+      sum += val;
+      if (showSteps) steps.push(`n=${n}: f(n) = ${formatNum(val)}`);
+    }
+
+    resEl.textContent = formatNum(sum);
+    resBox.className = 'result-box';
+    if (showSteps) {
+      stepsEl.style.display = 'block';
+      stepsEl.innerHTML = steps.join('<br>') + `<br><strong style="color:var(--accent)">Total = ${formatNum(sum)}</strong>`;
+    } else {
+      stepsEl.style.display = 'none';
+    }
+
+    addHistory(`Σ(${exprStr}, n=${from}..${to})`, formatNum(sum));
+    updateDisplay(formatNum(sum), `Σ f(n), n=${from}..${to}`, 'result');
+  } catch (e) {
+    showAdvError(resEl, resBox, stepsEl, 'Expression error: ' + e.message);
+  }
+}
+
+// ========================
+//  INTEGRATION
+// ========================
+function computeIntegral() {
+  const a = parseFloat(document.getElementById('intFrom').value);
+  const b = parseFloat(document.getElementById('intTo').value);
+  const exprStr = document.getElementById('intExpr').value.trim();
+  const method = document.getElementById('intMethod').value;
+  let n = parseInt(document.getElementById('intN').value);
+  const resEl = document.getElementById('intVal');
+  const stepsEl = document.getElementById('intSteps');
+  const resBox = document.getElementById('intResult');
+
+  if (isNaN(a) || isNaN(b)) { showAdvError(resEl, resBox, stepsEl, 'Invalid limits'); return; }
+
+  // Ensure even n for Simpson
+  if (method === 'simpson' && n % 2 !== 0) n++;
+  if (n < 4) n = 4;
+
+  try {
+    const f = (x) => evalExprForVar(exprStr, 'x', x);
+    let result;
+    let methodName;
+
+    if (method === 'simpson') {
+      result = simpsonIntegrate(f, a, b, n);
+      methodName = "Simpson's 1/3 Rule";
+    } else if (method === 'gauss') {
+      result = gaussLegendre(f, a, b);
+      methodName = "Gaussian Quadrature (32-pt)";
+      n = 32;
+    } else {
+      result = trapezoidalIntegrate(f, a, b, n);
+      methodName = "Trapezoidal Rule";
+    }
+
+    resEl.textContent = formatNum(result);
+    resBox.className = 'result-box';
+
+    stepsEl.style.display = 'block';
+    stepsEl.innerHTML = `Method: <span style="color:var(--accent)">${methodName}</span><br>` +
+      `Interval: [${a}, ${b}]<br>` +
+      `Subintervals: ${n}<br>` +
+      `Step h = ${formatNum((b - a) / n)}<br>` +
+      `<strong style="color:var(--accent)">∫ f(x)dx ≈ ${formatNum(result)}</strong>`;
+
+    addHistory(`∫(${exprStr}, ${a}..${b})`, formatNum(result));
+    updateDisplay(formatNum(result), `∫ f(x)dx, [${a}, ${b}]`, 'result');
+  } catch (e) {
+    showAdvError(resEl, resBox, stepsEl, 'Error: ' + e.message);
+  }
+}
+
+function simpsonIntegrate(f, a, b, n) {
+  const h = (b - a) / n;
+  let sum = f(a) + f(b);
+  for (let i = 1; i < n; i++) {
+    sum += f(a + i * h) * (i % 2 === 0 ? 2 : 4);
+  }
+  return (h / 3) * sum;
+}
+
+function trapezoidalIntegrate(f, a, b, n) {
+  const h = (b - a) / n;
+  let sum = (f(a) + f(b)) / 2;
+  for (let i = 1; i < n; i++) sum += f(a + i * h);
+  return h * sum;
+}
+
+// 32-point Gauss-Legendre quadrature nodes and weights
+function gaussLegendre(f, a, b) {
+  // 32-point nodes on [-1, 1]
+  const nodes = [
+    -0.9972638618494816, -0.9856115115452684, -0.9647622555875064, -0.9349060759377397,
+    -0.8963211557660521, -0.8493676137325700, -0.7944837959679424, -0.7321821187402897,
+    -0.6630442669302152, -0.5877157572407623, -0.5068999089322294, -0.4213512761306353,
+    -0.3318686022821276, -0.2392873622521371, -0.1444719615827965, -0.0483076656877383,
+     0.0483076656877383,  0.1444719615827965,  0.2392873622521371,  0.3318686022821276,
+     0.4213512761306353,  0.5068999089322294,  0.5877157572407623,  0.6630442669302152,
+     0.7321821187402897,  0.7944837959679424,  0.8493676137325700,  0.8963211557660521,
+     0.9349060759377397,  0.9647622555875064,  0.9856115115452684,  0.9972638618494816
+  ];
+  const weights = [
+    0.0070186100094491, 0.0162743947309057, 0.0253920653092621, 0.0342738629130214,
+    0.0428358980222267, 0.0509980592623762, 0.0586840934785355, 0.0658222227763618,
+    0.0723457941088485, 0.0781938957870703, 0.0833119242269467, 0.0876520930044038,
+    0.0911738786957639, 0.0938443990808046, 0.0956387200792749, 0.0965400885147278,
+    0.0965400885147278, 0.0956387200792749, 0.0938443990808046, 0.0911738786957639,
+    0.0876520930044038, 0.0833119242269467, 0.0781938957870703, 0.0723457941088485,
+    0.0658222227763618, 0.0586840934785355, 0.0509980592623762, 0.0428358980222267,
+    0.0342738629130214, 0.0253920653092621, 0.0162743947309057, 0.0070186100094491
+  ];
+
+  const mid = (a + b) / 2;
+  const half = (b - a) / 2;
+  let sum = 0;
+  for (let i = 0; i < 32; i++) {
+    sum += weights[i] * f(mid + half * nodes[i]);
+  }
+  return half * sum;
+}
+
+// ========================
+//  HISTORY
+// ========================
+function addHistory(expr, result) {
+  history.unshift({ expr, result, time: new Date().toLocaleTimeString() });
+  if (history.length > 50) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div class="empty-history">NO CALCULATIONS YET</div>';
+    return;
+  }
+  list.innerHTML = history.map((h, i) => `
+    <div class="history-item" onclick="recallHistory(${i})">
+      <span class="hist-expr">${h.expr}</span>
+      <span class="hist-result">${h.result}</span>
+    </div>
+  `).join('');
+}
+
+function recallHistory(i) {
+  const h = history[i];
+  expr = h.result;
+  hasResult = true;
+  updateDisplay(h.result, h.expr + ' =', 'result');
+  switchTab('std');
+}
+
+function clearHistory() {
+  history = [];
+  renderHistory();
+}
+
+// ========================
+//  HELPERS
+// ========================
+function showAdvError(el, box, stepsEl, msg) {
+  el.textContent = msg;
+  box.className = 'result-box error-box';
+  stepsEl.style.display = 'none';
+}
+
+// KEYBOARD SUPPORT
+document.addEventListener('keydown', e => {
+  const activePanel = document.querySelector('.panel.active').id;
+  if (activePanel !== 'panel-std' && activePanel !== 'panel-sci') return;
+
+  if (e.key >= '0' && e.key <= '9') appendNum(e.key);
+  else if (e.key === '.') appendNum('.');
+  else if (e.key === '+') appendOp('+');
+  else if (e.key === '-') appendOp('-');
+  else if (e.key === '*') appendOp('*');
+  else if (e.key === '/') { e.preventDefault(); appendOp('/'); }
+  else if (e.key === '^') appendOp('^');
+  else if (e.key === '(') appendStr('(');
+  else if (e.key === ')') appendStr(')');
+  else if (e.key === 'Enter' || e.key === '=') calculate();
+  else if (e.key === 'Backspace') backspace();
+  else if (e.key === 'Escape') clearAll();
+});
+</script>
+</body>
+</html>
