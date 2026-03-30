@@ -1,18 +1,15 @@
 """
-╔══════════════════════════════════════════════════════════╗
-║         DIGIT KEEPER 3 — The Figure Does the Math        ║
-║                                                          ║
-║  The stick figure WALKS to buttons and PRESSES them!     ║
-║  Run:  python3 digit_keeper3.py                          ║
-╚══════════════════════════════════════════════════════════╝
+DIGIT KEEPER 3
+Run: python3 digit_keeper3.py
 
-CONTROLS:
-  WASD / Arrow Keys  — Walk the stick figure
-  SPACE              — Press the button you're standing on
-  ESC                — Quit
+Walk the stick figure onto a calculator button, then press SPACE to press it.
+The value appears on the display only when the figure physically presses the button.
 
-  The figure must physically walk to a button and press
-  SPACE to add it to the calculator display!
+Controls:
+  A / D  or  Left / Right  -- Walk
+  W      or  Up             -- Jump
+  SPACE                     -- Press the button you stand on
+  ESC                       -- Quit
 """
 
 import pygame
@@ -24,541 +21,607 @@ pygame.init()
 
 W, H = 1000, 720
 screen = pygame.display.set_mode((W, H))
-pygame.display.set_caption("DIGIT KEEPER 3 — The Figure Does the Math")
+pygame.display.set_caption("Digit Keeper 3")
 clock = pygame.time.Clock()
-FPS   = 60
 
-# ── Fonts ──────────────────────────────────────────────────
-def fnt(size, bold=False):
-    for name in ["Consolas", "Courier New", None]:
-        try: return pygame.font.SysFont(name, size, bold=bold)
-        except: pass
-    return pygame.font.Font(None, size)
+# ---------- fonts ----------
+def make_font(size, bold=False):
+    try:    return pygame.font.SysFont("consolas", size, bold=bold)
+    except: return pygame.font.Font(None, size)
 
-F_GIANT = fnt(88,  bold=True)
-F_BIG   = fnt(52,  bold=True)
-F_MED   = fnt(32,  bold=True)
-F_SM    = fnt(21,  bold=True)
-F_XS    = fnt(15)
-F_TINY  = fnt(12)
+FONT_BIG = make_font(46, bold=True)
+FONT_MED = make_font(28, bold=True)
+FONT_SM  = make_font(20, bold=True)
+FONT_XS  = make_font(14)
 
-# ── Colors ─────────────────────────────────────────────────
-BG          = (13, 13, 22)
-CALC_BODY   = (26, 26, 40)
-CALC_BORDER = (55, 55, 88)
-DISP_BG     = (8,  20, 13)
-DISP_BORDER = (38, 130, 65)
-BTN_NUM     = (36, 36, 56)
-BTN_OP      = (54, 34, 72)
-BTN_EQ      = (24, 82, 52)
-BTN_CLR     = (82, 26, 36)
-WHITE       = (235, 240, 255)
-GREEN       = (65,  250, 125)
-CYAN        = (0,   205, 250)
-YELLOW      = (255, 225,  45)
-ORANGE      = (255, 145,  30)
-RED         = (255,  60,  60)
-PURPLE      = (170,  70, 250)
-GRAY        = (105, 105, 140)
-DARK        = (16,  16,  28)
-PINK        = (255, 105, 175)
-LIME        = (130, 255,  80)
+# ---------- colors ----------
+COL_BG      = (13,  13,  22)
+COL_CALC    = (26,  26,  40)
+COL_BORDER  = (55,  55,  88)
+COL_DISP    = (8,   20,  13)
+COL_DBRDR   = (38, 130,  65)
+COL_BNUM    = (36,  36,  56)
+COL_BOP     = (54,  34,  72)
+COL_BEQ     = (24,  82,  52)
+COL_BCLR    = (82,  26,  36)
+COL_WHITE   = (235, 240, 255)
+COL_GREEN   = (65,  250, 125)
+COL_CYAN    = (0,   205, 250)
+COL_YELLOW  = (255, 225,  45)
+COL_ORANGE  = (255, 145,  30)
+COL_RED     = (255,  60,  60)
+COL_PURPLE  = (170,  70, 250)
+COL_GRAY    = (105, 105, 140)
+COL_DARK    = (16,   16,  28)
+COL_PINK    = (255, 105, 175)
+COL_LIME    = (130, 255,  80)
 
-# ── Calculator geometry ────────────────────────────────────
-CALC_X, CALC_Y = 55,  30
-CALC_W, CALC_H = 500, 650
+# ---------- calculator layout ----------
+# Calculator body
+CX, CY = 55, 20
+CW, CH = 480, 680
 
-DISP_X = CALC_X + 20
-DISP_Y = CALC_Y + 36
-DISP_W = CALC_W - 40
-DISP_H = 95
+# Display screen (short — just shows numbers)
+DX = CX + 18
+DY = CY + 34
+DW = CW - 36
+DH = 68
 
-BTN_AREA_Y = DISP_Y + DISP_H + 22
-BTN_W, BTN_H, BTN_GAP = 96, 62, 9
+# Buttons start here
+BY0 = DY + DH + 16   # y of first button row top
+BW  = 100             # button width
+BH  = 58              # button height
+BG  = 7               # gap between buttons
 
-BUTTONS = [
-    ("C",  0,0,BTN_CLR,True), ("±",1,0,BTN_OP,True),
-    ("%",  2,0,BTN_OP, True), ("÷",3,0,BTN_OP,True),
-    ("7",  0,1,BTN_NUM,False),("8",1,1,BTN_NUM,False),
-    ("9",  2,1,BTN_NUM,False),("×",3,1,BTN_OP,True),
-    ("4",  0,2,BTN_NUM,False),("5",1,2,BTN_NUM,False),
-    ("6",  2,2,BTN_NUM,False),("−",3,2,BTN_OP,True),
-    ("1",  0,3,BTN_NUM,False),("2",1,3,BTN_NUM,False),
-    ("3",  2,3,BTN_NUM,False),("+",3,3,BTN_OP,True),
-    ("0",  0,4,BTN_NUM,False),(".",1,4,BTN_NUM,False),
-    ("=",  2,4,BTN_EQ, True), ("⌫",3,4,BTN_CLR,True),
+# Figure physical constants
+FIG_HALF  = 12   # half-width for x collision
+FIG_FEET  = 44   # distance from head-top to feet
+
+# The absolute minimum y the figure's FEET can be
+# (just below the display screen so figure can't float above buttons)
+MIN_FEET_Y = DY + DH + FIG_FEET + 2
+
+# Calculator floor (feet land here if between buttons)
+MAX_FEET_Y = CY + CH - 6
+
+# ---------- button definitions ----------
+# (internal_label, display_text, col, row, bg_color)
+BTN_DEFS = [
+    ("C",   "C",   0, 0, COL_BCLR),
+    ("sg",  "+/-", 1, 0, COL_BOP),
+    ("%",   "%",   2, 0, COL_BOP),
+    ("/",   "÷",   3, 0, COL_BOP),
+    ("7",   "7",   0, 1, COL_BNUM),
+    ("8",   "8",   1, 1, COL_BNUM),
+    ("9",   "9",   2, 1, COL_BNUM),
+    ("*",   "×",   3, 1, COL_BOP),
+    ("4",   "4",   0, 2, COL_BNUM),
+    ("5",   "5",   1, 2, COL_BNUM),
+    ("6",   "6",   2, 2, COL_BNUM),
+    ("-",   "-",   3, 2, COL_BOP),
+    ("1",   "1",   0, 3, COL_BNUM),
+    ("2",   "2",   1, 3, COL_BNUM),
+    ("3",   "3",   2, 3, COL_BNUM),
+    ("+",   "+",   3, 3, COL_BOP),
+    ("0",   "0",   0, 4, COL_BNUM),
+    (".",   ".",   1, 4, COL_BNUM),
+    ("=",   "=",   2, 4, COL_BEQ),
+    ("del", "<",   3, 4, COL_BCLR),
 ]
 
-def btn_rect(col, row):
-    x = CALC_X + 20 + col*(BTN_W + BTN_GAP)
-    y = BTN_AREA_Y  + row*(BTN_H + BTN_GAP)
-    return pygame.Rect(x, y, BTN_W, BTN_H)
+# Colour each button label gets when drawn
+def btn_label_color(key):
+    if key in ("C", "del"):          return COL_RED
+    if key in ("/", "*", "-", "+",
+               "%", "sg"):           return COL_CYAN
+    if key == "=":                   return COL_LIME
+    return COL_YELLOW   # digits and dot
 
-# Pre-build button rects for collision
-BTN_DATA = []   # (label, rect, color, is_op)
-for label, col, row, color, is_op in BUTTONS:
-    BTN_DATA.append((label, btn_rect(col, row), color, is_op))
+# Build button objects
+buttons = []
+for key, text, col, row, bg in BTN_DEFS:
+    rx = CX + 18 + col * (BW + BG)
+    ry = BY0     + row * (BH + BG)
+    buttons.append({
+        "key":   key,
+        "text":  text,
+        "rect":  pygame.Rect(rx, ry, BW, BH),
+        "bg":    bg,
+        "flash": 0,
+    })
 
-SYM_COLORS = {
-    "+": GREEN,  "−": CYAN,  "×": ORANGE, "÷": PURPLE,
-    "%": PINK,   "±": YELLOW,"=": LIME,   "C": RED,
-    "⌫": RED,   ".": WHITE,
-}
-for d in "0123456789": SYM_COLORS[d] = YELLOW
+# Verify all button tops are reachable (>= MIN_FEET_Y)
+print("--- geometry check ---")
+for row in range(5):
+    ry = BY0 + row * (BH + BG)
+    ok = "OK" if ry >= MIN_FEET_Y else "BLOCKED by ceiling!"
+    print(f"  row {row}: top={ry}  {ok}")
+print(f"  floor: {MAX_FEET_Y}")
+print("----------------------")
 
-def sym_col(s): return SYM_COLORS.get(s, WHITE)
+# ---------- particles ----------
+_particles = []
 
-# ── Particles ──────────────────────────────────────────────
-class Particle:
-    def __init__(self, x, y, col, text=None, vx=None, vy=None, life=55, size=5):
-        self.x, self.y = float(x), float(y)
-        self.col = col; self.text = text
-        self.vx  = vx  if vx  is not None else random.uniform(-3, 3)
-        self.vy  = vy  if vy  is not None else random.uniform(-4.5, -0.5)
-        self.life = self.maxlife = life
-        self.size = size
-    def update(self):
-        self.x+=self.vx; self.y+=self.vy; self.vy+=0.15; self.life-=1
-    def draw(self, surf):
-        a = self.life/self.maxlife
-        c = tuple(int(ch*a) for ch in self.col)
-        if self.text:
-            s = F_SM.render(self.text, True, c)
-            surf.blit(s, (int(self.x), int(self.y)))
-        else:
-            r = max(1, int(self.size*a))
-            pygame.draw.circle(surf, c, (int(self.x), int(self.y)), r)
+def spawn_particles(x, y, color, count=10):
+    for _ in range(count):
+        _particles.append({
+            "x":    float(x),
+            "y":    float(y),
+            "vx":   random.uniform(-3.0, 3.0),
+            "vy":   random.uniform(-5.0, -0.5),
+            "life": random.randint(30, 55),
+            "max":  50,
+            "r":    random.randint(3, 6),
+            "col":  color,
+        })
 
-particles = []
-def burst(x, y, col, n=12, texts=None):
-    for _ in range(n):
-        t = random.choice(texts) if texts else None
-        particles.append(Particle(x, y, col, text=t))
+def update_particles():
+    for p in _particles:
+        p["x"]  += p["vx"]
+        p["y"]  += p["vy"]
+        p["vy"] += 0.15
+        p["life"] -= 1
+    _particles[:] = [p for p in _particles if p["life"] > 0]
 
-# ── Press animation ────────────────────────────────────────
-class BtnPressAnim:
-    """Visual flash that plays when a button is pressed."""
-    def __init__(self, rect, label, color):
-        self.rect  = rect
-        self.label = label
-        self.color = color
-        self.life  = 22
-        self.maxlife = 22
-    def update(self): self.life -= 1
-    def alive(self): return self.life > 0
-    def draw(self, surf):
-        a = self.life / self.maxlife
-        c = tuple(min(255, int(ch + (255-ch)*a*0.6)) for ch in self.color)
-        pygame.draw.rect(surf, c, self.rect, border_radius=8)
-        # ripple ring
-        grow = int((1-a)*20)
-        r2 = self.rect.inflate(grow, grow)
-        pygame.draw.rect(surf, tuple(int(ch*a*0.8) for ch in self.color),
-                         r2, 2, border_radius=10)
+def draw_particles(surf):
+    for p in _particles:
+        alpha = p["life"] / p["max"]
+        c = tuple(min(255, int(ch * alpha)) for ch in p["col"])
+        r = max(1, int(p["r"] * alpha))
+        pygame.draw.circle(surf, c, (int(p["x"]), int(p["y"])), r)
 
-press_anims = []
+# ---------- rising symbol animation ----------
+_rising = []
 
-# ── Floating digit rising from button to display ───────────
-class RisingSymbol:
-    def __init__(self, x, y, sym):
-        self.x    = float(x)
-        self.y    = float(y)
-        self.sym  = sym
-        self.col  = sym_col(sym)
-        self.vy   = -5.5
-        self.life = 60
-        self.maxlife = 60
-        self.scale = 1.0
-    def update(self):
-        self.y   += self.vy
-        self.vy  *= 0.92
-        self.life -= 1
-        self.scale = 0.6 + 0.4*(self.life/self.maxlife)
-    def alive(self): return self.life > 0
-    def draw(self, surf):
-        a = self.life/self.maxlife
-        col = tuple(int(ch*a) for ch in self.col)
-        s   = F_MED.render(self.sym, True, col)
-        sc  = self.scale
-        ns  = pygame.transform.scale(s,(int(s.get_width()*sc),int(s.get_height()*sc)))
-        surf.blit(ns,(int(self.x)-ns.get_width()//2, int(self.y)-ns.get_height()//2))
+def spawn_rising(x, y, text, color):
+    _rising.append({
+        "x":    float(x),
+        "y":    float(y),
+        "text": text,
+        "col":  color,
+        "vy":   -4.5,
+        "life": 50,
+        "max":  50,
+    })
 
-rising_syms = []
+def update_rising():
+    for r in _rising:
+        r["y"]    += r["vy"]
+        r["vy"]   *= 0.92
+        r["life"] -= 1
+    _rising[:] = [r for r in _rising if r["life"] > 0]
 
-# ── Stick Figure ───────────────────────────────────────────
+def draw_rising(surf):
+    for r in _rising:
+        alpha = r["life"] / r["max"]
+        c = tuple(min(255, int(ch * alpha)) for ch in r["col"])
+        s = FONT_MED.render(r["text"], True, c)
+        surf.blit(s, (int(r["x"]) - s.get_width()//2,
+                      int(r["y"]) - s.get_height()//2))
+
+# ---------- stick figure ----------
 class Figure:
-    SPEED = 4.0
+    SPEED  = 4.2
+    GRAV   = 0.6
+    JUMP_V = -12.5
 
     def __init__(self):
-        # Start at the top of the first button row
-        first_btn = BTN_DATA[4][1]  # "7" button
-        self.x = float(first_btn.centerx)
-        self.y = float(first_btn.top - 2)
-        self.vx = 0.0
-        self.vy = 0.0
-        self.on_ground  = True
-        self.walk_t     = 0.0
-        self.facing     = 1
-        self.jump_lock  = False
-        self.pressing   = 0    # animation frames for pressing action
-        self.celebrate  = 0
-        self.blink      = 0
-        self.current_btn = None   # which button figure is on
+        # Start on the "7" button (index 4 in buttons list)
+        b = buttons[4]
+        self.x = float(b["rect"].centerx)
+        self.y = float(b["rect"].top)      # y = feet level
+        self.vx       = 0.0
+        self.vy       = 0.0
+        self.grounded = True
+        self.j_held   = False
+        self.walk_t   = 0.0
+        self.facing   = 1
+        self.anim_press    = 0   # countdown for press animation
+        self.anim_celebrate= 0
+        self.anim_blink    = 0
+        self.standing_on   = None   # button dict or None
 
-    def get_platform_y(self, x):
-        """Return the top-y of any button the figure is standing over, else floor."""
-        for label, rect, color, is_op in BTN_DATA:
-            if rect.left - 8 < x < rect.right + 8:
-                return rect.top
-        return CALC_Y + CALC_H - 18   # calc floor
-
-    def handle_input(self, keys):
-        moved = False
+    def handle_keys(self, keys):
+        # Horizontal
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.vx = -self.SPEED; self.facing = -1; moved = True
+            self.vx = -self.SPEED
+            self.facing = -1
         elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.vx = self.SPEED;  self.facing =  1; moved = True
+            self.vx = self.SPEED
+            self.facing = 1
         else:
-            self.vx *= 0.6
+            self.vx *= 0.5
 
-        if (keys[pygame.K_UP] or keys[pygame.K_w]) and self.on_ground and not self.jump_lock:
-            self.vy = -11
-            self.on_ground = False
-            self.jump_lock = True
-            burst(int(self.x), int(self.y)+4, CYAN, n=8)
-        if not (keys[pygame.K_UP] or keys[pygame.K_w]):
-            self.jump_lock = False
+        # Jump — press once
+        want_jump = keys[pygame.K_UP] or keys[pygame.K_w]
+        if want_jump and not self.j_held and self.grounded:
+            self.vy = self.JUMP_V
+            self.grounded = False
+            spawn_particles(int(self.x), int(self.y), COL_CYAN, count=6)
+        self.j_held = bool(want_jump)
 
-        if moved: self.walk_t += 0.22
+        if abs(self.vx) > 0.3:
+            self.walk_t += 0.22
 
     def update(self):
+        # --- horizontal ---
         self.x += self.vx
-        self.vy += 0.55
+        self.x = max(float(CX + FIG_HALF + 4),
+                     min(float(CX + CW - FIG_HALF - 4), self.x))
+
+        # --- vertical ---
+        self.vy += self.GRAV
         self.y  += self.vy
 
-        # Clamp x inside calculator
-        self.x = max(CALC_X + 18, min(CALC_X + CALC_W - 18, self.x))
+        # Platform collision (only when falling)
+        self.grounded = False
+        if self.vy >= 0:
+            for btn in buttons:
+                r = btn["rect"]
+                # Must be horizontally over the button
+                if r.left + 5 < self.x < r.right - 5:
+                    surface = float(r.top)
+                    # Feet crossed the surface this frame
+                    prev_y = self.y - self.vy
+                    if prev_y <= surface and self.y >= surface:
+                        self.y = surface
+                        self.vy = 0.0
+                        self.grounded = True
+                        break
 
-        # Platform / ground landing
-        gy = self.get_platform_y(self.x)
-        if self.y >= gy - 2:
-            self.y = float(gy)
-            self.vy = 0
-            self.on_ground = True
-        else:
-            self.on_ground = False
+            # Calc floor fallback
+            if not self.grounded and self.y >= MAX_FEET_Y:
+                self.y = float(MAX_FEET_Y)
+                self.vy = 0.0
+                self.grounded = True
 
-        # Ceiling
-        ceil = DISP_Y + DISP_H + 10
-        if self.y - 48 < ceil:
-            self.y = float(ceil + 48)
-            self.vy = abs(self.vy)*0.3
+        # Hard ceiling — feet cannot go above MIN_FEET_Y
+        if self.y < MIN_FEET_Y:
+            self.y  = float(MIN_FEET_Y)
+            self.vy = max(0.0, self.vy)
 
-        if self.pressing  > 0: self.pressing  -= 1
-        if self.celebrate > 0: self.celebrate -= 1
-        if self.blink     > 0: self.blink     -= 1
-        if random.random() < 0.004: self.blink = 9
+        # --- detect which button figure stands on ---
+        self.standing_on = None
+        if self.grounded:
+            for btn in buttons:
+                r = btn["rect"]
+                if r.left + 5 < self.x < r.right - 5:
+                    if abs(self.y - float(r.top)) <= 3:
+                        self.standing_on = btn
+                        break
 
-        # Detect which button figure stands on
-        self.current_btn = None
-        for label, rect, color, is_op in BTN_DATA:
-            if rect.left - 6 < self.x < rect.right + 6 and abs(self.y - rect.top) < 5:
-                self.current_btn = (label, rect, color)
-                break
+        # --- timers ---
+        if self.anim_press     > 0: self.anim_press     -= 1
+        if self.anim_celebrate > 0: self.anim_celebrate -= 1
+        if self.anim_blink     > 0: self.anim_blink     -= 1
+        if random.random() < 0.004: self.anim_blink = 9
 
-    def press_button(self):
-        """Called when SPACE is pressed — triggers press anim & returns button label."""
-        if self.current_btn is None:
+    def press(self):
+        """
+        Called when SPACE is pressed.
+        Returns the button key string, or None if not on a button.
+        """
+        btn = self.standing_on
+        if btn is None:
             return None
-        label, rect, color = self.current_btn
-        self.pressing   = 18
-        self.celebrate  = 35
-        # Press animation
-        press_anims.append(BtnPressAnim(rect, label, sym_col(label)))
+
+        # Trigger animations
+        self.anim_press     = 20
+        self.anim_celebrate = 40
+        btn["flash"] = 22
+
+        # Particles — plain circles only, no text (avoids font issues)
+        col = btn_label_color(btn["key"])
+        spawn_particles(btn["rect"].centerx, btn["rect"].top - 4,
+                        col, count=14)
+
         # Rising symbol
-        rising_syms.append(RisingSymbol(rect.centerx, rect.top - 10, label))
-        # Particles from button
-        burst(rect.centerx, rect.top, sym_col(label), n=16,
-              texts=[label, label])
-        return label
+        spawn_rising(btn["rect"].centerx,
+                     btn["rect"].top - 10,
+                     btn["text"],
+                     col)
+
+        return btn["key"]
 
     def draw(self, surf):
-        x, y = int(self.x), int(self.y)
-        pressing = self.pressing > 0
-        cel      = self.celebrate > 0
-        col      = WHITE
+        x  = int(self.x)
+        fy = int(self.y)       # feet
+        hy = fy - 36           # head centre
 
-        # Shadow
-        pygame.draw.ellipse(surf, (30,30,50), (x-15, y+2, 30, 8))
+        pressing  = self.anim_press     > 0
+        celebrate = self.anim_celebrate > 0
 
-        # HEAD
-        pygame.draw.circle(surf, col, (x, y-30), 12, 2)
+        # shadow
+        pygame.draw.ellipse(surf, (25, 25, 44), (x-13, fy+1, 26, 6))
 
-        # Eyes
-        ey = y - 33
-        if self.blink:
-            pygame.draw.line(surf, col, (x-5, ey), (x-2, ey), 2)
-            pygame.draw.line(surf, col, (x+2, ey), (x+5, ey), 2)
+        # head
+        pygame.draw.circle(surf, COL_WHITE, (x, hy), 11, 2)
+
+        # eyes
+        if self.anim_blink > 0:
+            pygame.draw.line(surf, COL_WHITE, (x-4, hy-2), (x-1, hy-2), 2)
+            pygame.draw.line(surf, COL_WHITE, (x+1, hy-2), (x+4, hy-2), 2)
         else:
-            pygame.draw.circle(surf, col, (x-4, ey), 2)
-            pygame.draw.circle(surf, col, (x+4, ey), 2)
+            pygame.draw.circle(surf, COL_WHITE, (x-4, hy-2), 2)
+            pygame.draw.circle(surf, COL_WHITE, (x+4, hy-2), 2)
 
-        # Mouth
-        if cel:
-            pygame.draw.arc(surf, YELLOW, (x-5, y-24, 10, 7), math.pi, 2*math.pi, 2)
+        # mouth
+        if celebrate:
+            pygame.draw.arc(surf, COL_YELLOW,
+                            pygame.Rect(x-5, hy+4, 10, 7),
+                            math.pi, 2*math.pi, 2)
         else:
-            pygame.draw.line(surf, col, (x-4, y-21), (x+4, y-21), 2)
+            pygame.draw.line(surf, COL_WHITE, (x-4, hy+5), (x+4, hy+5), 2)
 
-        # BODY
-        pygame.draw.line(surf, col, (x, y-18), (x, y+8), 2)
+        # body
+        pygame.draw.line(surf, COL_WHITE, (x, hy+11), (x, fy-10), 2)
 
-        # LEGS
-        sw = int(10*math.sin(self.walk_t)) if abs(self.vx) > 0.3 else 0
-        pygame.draw.line(surf, col, (x, y+8),  (x-sw, y+32), 2)
-        pygame.draw.line(surf, col, (x, y+8),  (x+sw, y+32), 2)
+        # legs
+        sw = int(10 * math.sin(self.walk_t)) if abs(self.vx) > 0.2 else 0
+        pygame.draw.line(surf, COL_WHITE, (x, fy-10), (x-sw, fy), 2)
+        pygame.draw.line(surf, COL_WHITE, (x, fy-10), (x+sw, fy), 2)
 
-        # ARMS — pressing pose vs walk
+        # arms
         if pressing:
-            # One arm pushed DOWN onto button
-            pygame.draw.line(surf, col, (x, y-8), (x+14*self.facing, y+12), 2)
-            pygame.draw.line(surf, col, (x, y-8), (x-10*self.facing, y-2), 2)
-            # Fist dot
-            pygame.draw.circle(surf, YELLOW, (x+14*self.facing, y+12), 4)
-        elif cel:
-            # Arms up celebrating
-            pygame.draw.line(surf, col, (x, y-8), (x-18, y-20+int(4*math.sin(self.walk_t*4))), 2)
-            pygame.draw.line(surf, col, (x, y-8), (x+18, y-20+int(4*math.sin(self.walk_t*4+1))), 2)
+            # one arm pushes down onto button
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x + 16*self.facing, fy-14), 2)
+            pygame.draw.circle(surf, COL_YELLOW,
+                               (x + 16*self.facing, fy-14), 4)
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x - 10*self.facing, hy+20), 2)
+        elif celebrate:
+            t2 = self.walk_t * 4
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x-17, hy + int(5*math.sin(t2))), 2)
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x+17, hy + int(5*math.sin(t2+1))), 2)
         else:
-            asw = int(8*math.sin(self.walk_t+math.pi)) if abs(self.vx)>0.3 else 0
-            pygame.draw.line(surf, col, (x, y-8), (x-14, y+2+asw), 2)
-            pygame.draw.line(surf, col, (x, y-8), (x+14, y+2-asw), 2)
+            sw2 = int(8*math.sin(self.walk_t+math.pi)) if abs(self.vx)>0.2 else 0
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x-14, fy-20+sw2), 2)
+            pygame.draw.line(surf, COL_WHITE,
+                             (x, hy+13), (x+14, fy-20-sw2), 2)
 
-        # Highlight which button the figure is on
-        if self.current_btn:
-            label, rect, bcol = self.current_btn
-            # Glowing outline on the button
-            pygame.draw.rect(surf, sym_col(label), rect, 3, border_radius=8)
-            # "PRESS SPACE" tooltip above figure
-            tip = F_XS.render("SPACE → press!", True, sym_col(label))
-            surf.blit(tip, (x - tip.get_width()//2, y - 72))
+        # glow active button + tooltip
+        if self.standing_on:
+            r   = self.standing_on["rect"]
+            col = btn_label_color(self.standing_on["key"])
+            pygame.draw.rect(surf, col, r, 3, border_radius=8)
+            tip = FONT_XS.render("SPACE = press!", True, col)
+            surf.blit(tip, (x - tip.get_width()//2, hy - 22))
 
-    def rect(self):
-        return pygame.Rect(self.x-13, self.y-42, 26, 74)
+# ---------- calculator display logic ----------
+expr   = ""
+result = ""
+d_flash = 0
 
-# ── Calculator display ─────────────────────────────────────
-expr       = ""
-result_str = ""
-disp_flash = 0
+def apply_key(key):
+    """Update the expression/result based on which button was pressed."""
+    global expr, result, d_flash
 
-def apply_label(label):
-    """Apply a pressed button label to the expression."""
-    global expr, result_str, disp_flash
-    if label == "C":
-        expr = ""; result_str = ""; return
-    if label == "⌫":
-        expr = expr[:-1]; result_str = ""; return
-    if label == "=":
+    if key == "C":
+        expr   = ""
+        result = ""
+
+    elif key == "del":
+        if result:
+            result = ""
+        else:
+            expr = expr[:-1]
+
+    elif key == "=":
+        # Only evaluate if there's something to evaluate
+        if expr == "":
+            return
         try:
-            safe = expr.replace("÷","/").replace("×","*").replace("−","-").replace("%","/100")
-            res  = eval(safe)
-            result_str = str(round(res, 8)) if isinstance(res,float) else str(res)
-        except:
-            result_str = "ERROR"
-        return
-    if label == "±":
-        if expr and expr[0]=="-": expr=expr[1:]
-        elif expr: expr="-"+expr
-        return
-    # If there's a result showing, start fresh unless appending operator
-    if result_str and label not in ("+","−","×","÷","%"):
-        expr = result_str
-        result_str = ""
-    elif result_str:
-        expr = result_str
-        result_str = ""
-    expr += label
-    disp_flash = 22
+            # Build a safe expression — only our own characters
+            safe = expr.replace("%", "/100")
+            ans  = eval(safe)   # expr only ever contains digits + - * / . %
+            if isinstance(ans, float):
+                # Clean up float display
+                ans_str = f"{ans:.8f}".rstrip("0").rstrip(".")
+            else:
+                ans_str = str(ans)
+            result = ans_str
+        except ZeroDivisionError:
+            result = "DIV/0"
+        except Exception:
+            result = "ERR"
+
+    elif key == "sg":   # sign toggle
+        if result:
+            if result.startswith("-"): result = result[1:]
+            else:                      result = "-" + result
+        elif expr:
+            if expr.startswith("-"): expr = expr[1:]
+            else:                    expr = "-" + expr
+
+    else:
+        # Regular key: digit, operator, dot
+        if result:
+            if key in "0123456789.":
+                # Start fresh number
+                expr   = result
+                result = ""
+                expr   = key   # replace, not append
+            else:
+                # Chain: use result as left operand
+                expr   = result + key
+                result = ""
+        else:
+            expr += key
+        d_flash = 22
+
+# ---------- drawing ----------
+def draw_background(surf):
+    surf.fill(COL_BG)
+    for gx in range(0, W, 32):
+        pygame.draw.line(surf, (20, 20, 34), (gx, 0), (gx, H))
+    for gy in range(0, H, 32):
+        pygame.draw.line(surf, (20, 20, 34), (0, gy), (W, gy))
+
+def draw_calc_body(surf):
+    pygame.draw.rect(surf, COL_CALC,   (CX, CY, CW, CH), border_radius=18)
+    pygame.draw.rect(surf, COL_BORDER, (CX, CY, CW, CH), 3, border_radius=18)
+    brand = FONT_XS.render("DIGIT KEEPER  v3", True, COL_GRAY)
+    surf.blit(brand, (CX + CW//2 - brand.get_width()//2, CY + 10))
 
 def draw_display(surf):
-    pygame.draw.rect(surf, DISP_BG,    (DISP_X,DISP_Y,DISP_W,DISP_H), border_radius=10)
-    pygame.draw.rect(surf, DISP_BORDER,(DISP_X,DISP_Y,DISP_W,DISP_H), 2, border_radius=10)
+    pygame.draw.rect(surf, COL_DISP,  (DX, DY, DW, DH), border_radius=8)
+    pygame.draw.rect(surf, COL_DBRDR, (DX, DY, DW, DH), 2, border_radius=8)
 
-    # Scanlines
-    for row in range(DISP_Y+3, DISP_Y+DISP_H-3, 5):
-        pygame.draw.line(surf,(0,8,4),(DISP_X+3,row),(DISP_X+DISP_W-3,row))
+    # Pretty-print: replace raw operators with nicer symbols for display
+    def prettify(s):
+        return (s.replace("*", "x")
+                 .replace("/", "÷"))
 
-    if result_str:
-        es = F_XS.render(expr, True, GRAY)
-        surf.blit(es,(DISP_X+DISP_W-es.get_width()-10, DISP_Y+8))
-        rs = F_BIG.render(result_str, True, GREEN)
-        surf.blit(rs,(DISP_X+DISP_W-rs.get_width()-10, DISP_Y+DISP_H-rs.get_height()-6))
+    if result:
+        # Show expression small on top, result big on bottom
+        small = FONT_XS.render(prettify(expr), True, COL_GRAY)
+        surf.blit(small, (DX + DW - small.get_width() - 8, DY + 4))
+        big = FONT_BIG.render(result, True, COL_GREEN)
+        surf.blit(big, (DX + DW - big.get_width() - 8,
+                        DY + DH - big.get_height() - 4))
     else:
-        col = (90,240,130) if disp_flash>0 else (50,150,75)
-        disp_text = expr if expr else "0"
-        # Scroll if too long
-        es = F_BIG.render(disp_text, True, col)
-        if es.get_width() > DISP_W-16:
-            # clip to right portion
-            clip = pygame.Rect(es.get_width()-(DISP_W-20), 0, DISP_W-20, es.get_height())
-            surf.blit(es, (DISP_X+8, DISP_Y+DISP_H-es.get_height()-6), clip)
-        else:
-            surf.blit(es,(DISP_X+DISP_W-es.get_width()-10,
-                          DISP_Y+DISP_H-es.get_height()-6))
+        col  = (90, 240, 130) if d_flash > 0 else (50, 150, 70)
+        text = prettify(expr) if expr else "0"
+        s    = FONT_BIG.render(text, True, col)
+        # If too wide, anchor left
+        draw_x = max(DX + 4, DX + DW - s.get_width() - 8)
+        surf.blit(s, (draw_x, DY + DH - s.get_height() - 4))
 
-def draw_calculator(surf):
-    # Body
-    pygame.draw.rect(surf, CALC_BODY,   (CALC_X,CALC_Y,CALC_W,CALC_H), border_radius=20)
-    pygame.draw.rect(surf, CALC_BORDER, (CALC_X,CALC_Y,CALC_W,CALC_H), 3, border_radius=20)
+def draw_buttons(surf):
+    for btn in buttons:
+        r     = btn["rect"]
+        fl    = btn["flash"]
+        bg    = btn["bg"]
 
-    # Brand
-    b = F_XS.render("DIGIT KEEPER  v3.0", True, GRAY)
-    surf.blit(b,(CALC_X+CALC_W//2-b.get_width()//2, CALC_Y+10))
+        # Flash effect
+        if fl > 0:
+            t  = fl / 22.0
+            bg = tuple(min(255, int(c + (255-c)*t*0.65)) for c in bg)
+            btn["flash"] -= 1
 
-    # Buttons (base layer — anims drawn on top)
-    for label, rect, color, is_op in BTN_DATA:
-        pygame.draw.rect(surf, color, rect, border_radius=8)
-        pygame.draw.rect(surf, CALC_BORDER, rect, 1, border_radius=8)
+        pygame.draw.rect(surf, bg, r, border_radius=7)
+        pygame.draw.rect(surf, COL_BORDER, r, 1, border_radius=7)
 
-        # Label color
-        lc = sym_col(label)
-        ls = F_SM.render(label, True, lc)
-        surf.blit(ls,(rect.centerx-ls.get_width()//2,
-                      rect.centery-ls.get_height()//2))
+        lc = btn_label_color(btn["key"])
+        ls = FONT_SM.render(btn["text"], True, lc)
+        surf.blit(ls, (r.centerx - ls.get_width()//2,
+                       r.centery - ls.get_height()//2))
 
-        # Small hint
-        hs = F_TINY.render("←walk here", True, (55,55,78))
-        surf.blit(hs,(rect.x+3, rect.y+3))
-
-# ── Right panel ────────────────────────────────────────────
-def draw_panel(surf, figure):
-    px = CALC_X + CALC_W + 30
-    py = CALC_Y
+def draw_panel(surf, fig):
+    px = CX + CW + 26
+    py = CY
 
     # Title
-    t = F_MED.render("DIGIT KEEPER 3", True, CYAN)
-    surf.blit(t,(px,py))
-    s = F_XS.render("Walk to a button → press SPACE!", True, GRAY)
-    surf.blit(s,(px,py+36)); py+=72
+    surf.blit(FONT_MED.render("DIGIT KEEPER 3", True, COL_CYAN), (px, py))
+    py += 34
+    surf.blit(FONT_XS.render("Walk to a button then press SPACE!", True, COL_GRAY),
+              (px, py))
+    py += 44
 
-    # Current standing on
-    pygame.draw.rect(surf,DARK,(px,py,320,74),border_radius=10)
-    pygame.draw.rect(surf,CALC_BORDER,(px,py,320,74),2,border_radius=10)
-    ol=F_XS.render("STANDING ON:",True,GRAY); surf.blit(ol,(px+10,py+8))
-    if figure.current_btn:
-        label,_,_ = figure.current_btn
-        big = F_GIANT.render(label, True, sym_col(label))
-        surf.blit(big,(px+160-big.get_width()//2, py+38-big.get_height()//2))
+    # Standing on
+    pygame.draw.rect(surf, COL_DARK,   (px, py, 320, 66), border_radius=10)
+    pygame.draw.rect(surf, COL_BORDER, (px, py, 320, 66), 2, border_radius=10)
+    surf.blit(FONT_XS.render("STANDING ON:", True, COL_GRAY), (px+10, py+6))
+    if fig.standing_on:
+        text = fig.standing_on["text"]
+        col  = btn_label_color(fig.standing_on["key"])
+        s    = FONT_BIG.render(text, True, col)
+        surf.blit(s, (px + 160 - s.get_width()//2,
+                      py + 33  - s.get_height()//2))
     else:
-        nd=F_SM.render("(between buttons)", True,(55,55,80))
-        surf.blit(nd,(px+10,py+36))
-    py+=90
+        surf.blit(FONT_XS.render("(between buttons)", True, (55, 55, 80)),
+                  (px+10, py+28))
+    py += 80
 
-    # Expression box
-    pygame.draw.rect(surf,DARK,(px,py,320,52),border_radius=8)
-    pygame.draw.rect(surf,CALC_BORDER,(px,py,320,52),1,border_radius=8)
-    el=F_XS.render("EXPRESSION:",True,GRAY); surf.blit(el,(px+10,py+8))
-    ev=F_SM.render(expr if expr else "—",True,GREEN)
-    surf.blit(ev,(px+10,py+26)); py+=64
+    # Expression
+    pygame.draw.rect(surf, COL_DARK,   (px, py, 320, 44), border_radius=7)
+    pygame.draw.rect(surf, COL_BORDER, (px, py, 320, 44), 1, border_radius=7)
+    surf.blit(FONT_XS.render("EXPR:", True, COL_GRAY), (px+8, py+6))
+    surf.blit(FONT_SM.render(expr if expr else "—", True, COL_GREEN), (px+8, py+22))
+    py += 56
 
-    if result_str:
-        pygame.draw.rect(surf,DARK,(px,py,320,52),border_radius=8)
-        pygame.draw.rect(surf,CALC_BORDER,(px,py,320,52),1,border_radius=8)
-        rl=F_XS.render("RESULT:",True,GRAY); surf.blit(rl,(px+10,py+8))
-        rv=F_SM.render(result_str,True,LIME := (130,255,80))
-        surf.blit(rv,(px+10,py+26)); py+=64
+    # Result
+    if result:
+        pygame.draw.rect(surf, COL_DARK,   (px, py, 320, 44), border_radius=7)
+        pygame.draw.rect(surf, COL_BORDER, (px, py, 320, 44), 1, border_radius=7)
+        surf.blit(FONT_XS.render("RESULT:", True, COL_GRAY), (px+8, py+6))
+        surf.blit(FONT_SM.render(result, True, COL_LIME), (px+8, py+22))
+        py += 56
 
     # Controls
-    py+=6
-    ct=F_SM.render("CONTROLS",True,CYAN); surf.blit(ct,(px,py)); py+=28
-    controls=[
-        ("← → / A D","Walk left / right"),
-        ("↑ / W",     "Jump between rows"),
-        ("SPACE",     "Press button you stand on"),
-        ("ESC",       "Quit"),
+    py += 8
+    surf.blit(FONT_SM.render("CONTROLS", True, COL_CYAN), (px, py))
+    py += 26
+    for key_name, desc in [
+        ("A / D   or   ← →", "Walk"),
+        ("W       or   ↑",   "Jump"),
+        ("SPACE",             "Press button"),
+        ("ESC",               "Quit"),
+    ]:
+        surf.blit(FONT_XS.render(key_name,      True, COL_YELLOW), (px,     py))
+        surf.blit(FONT_XS.render("— " + desc,   True, COL_WHITE),  (px+160, py))
+        py += 20
+
+    # Tip
+    py += 12
+    tips = [
+        "Jump up to reach higher button rows!",
+        "Walk to  =  and press SPACE to evaluate.",
+        "Try building:  9 + 3  then press  =",
+        "C clears everything.",
     ]
-    for key,desc in controls:
-        ks=F_XS.render(key,True,YELLOW)
-        ds=F_XS.render("— "+desc,True,WHITE)
-        surf.blit(ks,(px,py)); surf.blit(ds,(px+118,py)); py+=22
+    tip = tips[(pygame.time.get_ticks() // 3000) % len(tips)]
+    surf.blit(FONT_XS.render("Tip: " + tip, True, (90, 150, 110)), (px, py))
 
-    # Tips
-    py+=12
-    tips=[
-        "💡 Walk onto a button to highlight it.",
-        "💡 Jump up to reach row above!",
-        "💡 The figure PUSHES the button down.",
-        "💡 Build expressions like 7 × 8 = 56!",
-        "💡 Walk to = and press SPACE to evaluate.",
-    ]
-    tip = tips[(pygame.time.get_ticks()//3500) % len(tips)]
-    ts=F_XS.render(tip,True,(95,155,115)); surf.blit(ts,(px,py))
-
-# ── Background ─────────────────────────────────────────────
-def draw_bg(surf):
-    surf.fill(BG)
-    for gx in range(0,W,32): pygame.draw.line(surf,(20,20,34),(gx,0),(gx,H))
-    for gy in range(0,H,32): pygame.draw.line(surf,(20,20,34),(0,gy),(W,gy))
-
-# ── MAIN ──────────────────────────────────────────────────
-figure     = Figure()
-space_lock = False
+# ---------- main loop ----------
+figure    = Figure()
+space_held = False
 
 running = True
 while running:
-    clock.tick(FPS)
+    clock.tick(60)
 
+    # events
     for event in pygame.event.get():
-        if event.type == pygame.QUIT: running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE: running = False
+        if event.type == pygame.QUIT:
+            running = False
 
-            if event.key == pygame.K_SPACE and not space_lock:
-                label = figure.press_button()
-                if label:
-                    apply_label(label)
-                    space_lock = True
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.key == pygame.K_SPACE and not space_held:
+                space_held = True
+                key = figure.press()
+                if key is not None:
+                    apply_key(key)
 
-        if event.type == pygame.KEYUP:
+        elif event.type == pygame.KEYUP:
             if event.key == pygame.K_SPACE:
-                space_lock = False
+                space_held = False
 
-    # Update
+    # update
     keys = pygame.key.get_pressed()
-    figure.handle_input(keys)
+    figure.handle_keys(keys)
     figure.update()
 
-    if disp_flash > 0: disp_flash -= 1
+    if d_flash > 0:
+        d_flash -= 1
 
-    for pa in press_anims:  pa.update()
-    press_anims[:] = [p for p in press_anims if p.alive()]
+    update_particles()
+    update_rising()
 
-    for rs in rising_syms:  rs.update()
-    rising_syms[:] = [r for r in rising_syms if r.alive()]
-
-    for pt in particles:    pt.update()
-    particles[:] = [p for p in particles if p.life > 0]
-
-    # Draw
-    draw_bg(screen)
-    draw_calculator(screen)
-
-    # Press animations (over buttons, under figure)
-    for pa in press_anims:
-        pa.draw(screen)
-
+    # draw
+    draw_background(screen)
+    draw_calc_body(screen)
+    draw_buttons(screen)
     draw_display(screen)
-
-    # Rising symbols
-    for rs in rising_syms:
-        rs.draw(screen)
-
-    # Particles
-    for pt in particles:
-        pt.draw(screen)
-
-    # Figure drawn last so it's on top
+    draw_rising(screen)
+    draw_particles(screen)
     figure.draw(screen)
-
     draw_panel(screen, figure)
 
     pygame.display.flip()
